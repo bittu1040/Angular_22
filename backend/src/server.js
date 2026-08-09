@@ -1,26 +1,33 @@
-const express = require('express');
-const cors = require('cors');
-require('dotenv').config();
+const express = require("express");
+const dotenv = require("dotenv");
+
+const connectDatabase = require("./config/database");
+const userRoutes = require("./routes/user.routes");
+
+dotenv.config();
 
 const app = express();
 
-const PORT = process.env.PORT || 3000;
-
-app.use(cors());
 app.use(express.json());
 
-app.get('/', (req, res) => {
+app.get("/", (req, res) => {
   res.json({
-    message: 'Backend is running'
+    success: true,
+    message: "User Management API is running"
   });
 });
 
-app.get('/api/hello', (req, res) => {
-  res.json({
-    message: 'Hello from Express!'
-  });
-});
+// User routes
+app.use("/api/users", userRoutes);
 
-app.listen(PORT, () => {
-  console.log(`Backend running on http://localhost:${PORT}`);
-});
+const PORT = process.env.PORT || 3000;
+
+const startServer = async () => {
+  await connectDatabase();
+
+  app.listen(PORT, () => {
+    console.log(`Server running on http://localhost:${PORT}`);
+  });
+};
+
+startServer();
