@@ -1,3 +1,4 @@
+const mongoose = require("mongoose");
 const bcrypt = require("bcryptjs");
 const User = require("../models/user.model");
 
@@ -155,7 +156,245 @@ const getUsers = async (req, res) => {
   }
 };
 
+const getUserById = async (req, res) => {
+  try {
+    const { id } = req.params;
+
+    // Check if MongoDB ID is valid
+    if (!mongoose.Types.ObjectId.isValid(id)) {
+      return res.status(400).json({
+        success: false,
+        message: "Invalid user ID"
+      });
+    }
+
+    const user = await User.findById(id).select("-password");
+
+    if (!user) {
+      return res.status(404).json({
+        success: false,
+        message: "User not found"
+      });
+    }
+
+    res.status(200).json({
+      success: true,
+      data: user
+    });
+  } catch (error) {
+    console.error("Get user error:", error);
+
+    res.status(500).json({
+      success: false,
+      message: "Failed to get user"
+    });
+  }
+};
+
+const updateUser = async (req, res) => {
+  try {
+    const { id } = req.params;
+    const { name, email, password } = req.body;
+
+    // Validate MongoDB ID
+    if (!mongoose.Types.ObjectId.isValid(id)) {
+      return res.status(400).json({
+        success: false,
+        message: "Invalid user ID"
+      });
+    }
+
+    // Find user
+    const user = await User.findById(id);
+
+    if (!user) {
+      return res.status(404).json({
+        success: false,
+        message: "User not found"
+      });
+    }
+
+    // Update name
+    if (name !== undefined) {
+      if (!name.trim()) {
+        return res.status(400).json({
+          success: false,
+          message: "Name cannot be empty"
+        });
+      }
+
+      user.name = name.trim();
+    }
+
+    // Update email
+    if (email !== undefined) {
+      const normalizedEmail = email.toLowerCase().trim();
+
+      // Check if another user already has this email
+      const existingUser = await User.findOne({
+        email: normalizedEmail,
+        _id: { $ne: id }
+      });
+
+      if (existingUser) {
+        return res.status(409).json({
+          success: false,
+          message: "Email already exists"
+        });
+      }
+
+      user.email = normalizedEmail;
+    }
+
+
+    await user.save();
+
+    res.status(200).json({
+      success: true,
+      message: "User updated successfully",
+      data: {
+        id: user._id,
+        name: user.name,
+        email: user.email,
+        role: user.role,
+        status: user.status,
+        createdAt: user.createdAt,
+        updatedAt: user.updatedAt
+      }
+    });
+  } catch (error) {
+    console.error("Update user error:", error);
+
+    res.status(500).json({
+      success: false,
+      message: "Failed to update user"
+    });
+  }
+};
+
+const deleteUser = async (req, res) => {
+  try {
+    const { id } = req.params;
+
+    // Validate MongoDB ID
+    if (!mongoose.Types.ObjectId.isValid(id)) {
+      return res.status(400).json({
+        success: false,
+        message: "Invalid user ID"
+      });
+    }
+
+    // Find user
+    const user = await User.findById(id);
+
+    if (!user) {
+      return res.status(404).json({
+        success: false,
+        message: "User not found"
+      });
+    }
+
+    // Already inactive
+    if (user.status === "inactive") {
+      return res.status(400).json({
+        success: false,
+        message: "User is already inactive"
+      });
+    }
+
+    // Soft delete
+    user.status = "inactive";
+
+    await user.save();
+
+    res.status(200).json({
+      success: true,
+      message: "User deactivated successfully",
+      data: {
+        id: user._id,
+        name: user.name,
+        email: user.email,
+        role: user.role,
+        status: user.status
+      }
+    });
+  } catch (error) {
+    console.error("Delete user error:", error);
+
+    res.status(500).json({
+      success: false,
+      message: "Failed to deactivate user"
+    });
+  }
+};
+
+
+const downloadUsers = async (req, res) => {
+  try {
+    const {
+      search = "",
+      role,
+      status
+    } = req.query;
+
+    const filter = {};
+
+    if (search.trim()) {
+      filter.$or = [
+        {
+          name: {
+            $regex: search.trim(),
+            $options: "i"
+          }
+        },
+        {
+          email: {
+            $regex: search.trim(),
+            $options: "i"
+          }
+        }
+      ];
+    }
+
+    if (role) {
+      filter.role = role;
+    }
+
+    if (status) {
+      filter.status = status;
+    }
+
+    const users = await User.find(filter)
+      .select("-password")
+      .sort({ createdAt: -1 })
+      .lean();
+
+    // Create JSON file
+    const jsonData = JSON.stringify(users, null, 2);
+
+    // Tell browser to download the response
+    res.setHeader("Content-Type", "application/json");
+    res.setHeader(
+      "Content-Disposition",
+      'attachment; filename="users.json"'
+    );
+
+    res.send(jsonData);
+  } catch (error) {
+    console.error("Download users error:", error);
+
+    res.status(500).json({
+      success: false,
+      message: "Failed to download users"
+    });
+  }
+};
+
 module.exports = {
   createUser,
-  getUsers
+  getUsers,
+  getUserById,
+  updateUser,
+  deleteUser,
+  downloadUsers
 };
