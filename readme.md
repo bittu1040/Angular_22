@@ -101,14 +101,13 @@ POST /api/auth/register    Public
 POST /api/auth/login       Public
 GET  /api/auth/me          JWT required
 
-And user APIs:
+And tasks APIs:
 
-POST   /api/users          JWT required
-GET    /api/users          JWT required
-GET    /api/users/:id      JWT required
-PUT    /api/users/:id      JWT required
-DELETE /api/users/:id      JWT required
-GET    /api/users/download JWT required
+POST   /api/tasks
+GET    /api/tasks
+GET    /api/tasks/:id
+PUT    /api/tasks/:id
+DELETE /api/tasks/:id
 
 Browser -> `http://localhost:4200`
 

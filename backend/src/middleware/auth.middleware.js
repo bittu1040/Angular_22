@@ -22,6 +22,8 @@ const authMiddleware = (req, res, next) => {
 
     const token = authHeader.split(" ")[1];
 
+    console.log("Received token:", token);
+
     if (!token) {
       return res.status(401).json({
         success: false,
@@ -34,6 +36,8 @@ const authMiddleware = (req, res, next) => {
       token,
       process.env.JWT_SECRET
     );
+
+    console.log("Decoded token:", decoded);
 
     // Attach authenticated user information
     req.user = decoded;
