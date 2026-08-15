@@ -1,43 +1,30 @@
 const jwt = require("jsonwebtoken");
 
 const authMiddleware = (req, res, next) => {
+
+    console.log("========== AUTH MIDDLEWARE ==========");
+
   try {
+    // Accept token from Authorization header (Bearer), or from a cookie named `accessToken` as a fallback
     const authHeader = req.headers.authorization;
+    let token = null;
 
-    // Check Authorization header
-    if (!authHeader) {
-      return res.status(401).json({
-        success: false,
-        message: "Authorization token is required"
-      });
+    if (authHeader && authHeader.startsWith("Bearer ")) {
+      token = authHeader.split(" ")[1];
+    } else if (req.cookies && req.cookies.accessToken) {
+      token = req.cookies.accessToken;
     }
-
-    // Check Bearer token format
-    if (!authHeader.startsWith("Bearer ")) {
-      return res.status(401).json({
-        success: false,
-        message: "Invalid authorization format"
-      });
-    }
-
-    const token = authHeader.split(" ")[1];
-
-    console.log("Received token:", token);
 
     if (!token) {
       return res.status(401).json({
         success: false,
-        message: "Authorization token is required"
+        message: "Authorization token is required",
       });
     }
-
     // Verify JWT
-    const decoded = jwt.verify(
-      token,
-      process.env.JWT_SECRET
-    );
+    const decoded = jwt.verify(token, process.env.JWT_SECRET);
 
-    console.log("Decoded token:", decoded);
+    console.log("Authenticated user:", decoded);
 
     // Attach authenticated user information
     req.user = decoded;
@@ -48,7 +35,7 @@ const authMiddleware = (req, res, next) => {
 
     return res.status(401).json({
       success: false,
-      message: "Invalid or expired token"
+      message: "Invalid or expired token",
     });
   }
 };

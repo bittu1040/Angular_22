@@ -6,7 +6,6 @@ const Task = require("../models/task.model");
 const createTask = async (req, res) => {
   try {
     const { title, description } = req.body;
-        console.log("Authenticated user:", req.user);
 
 
     if (!title) {

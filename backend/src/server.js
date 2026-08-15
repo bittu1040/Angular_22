@@ -1,5 +1,7 @@
 const express = require("express");
 const dotenv = require("dotenv");
+const cors = require("cors");
+const cookieParser = require("cookie-parser");
 
 const connectDatabase = require("./config/database");
 const authRoutes = require("./routes/auth.routes");
@@ -10,6 +12,17 @@ dotenv.config();
 const app = express();
 
 app.use(express.json());
+
+// Enable CORS and allow cookies (credentials)
+app.use(
+  cors({
+    origin: process.env.FRONTEND_URL || "http://localhost:4200",
+    credentials: true,
+  })
+);
+
+// Parse cookies for refresh token handling
+app.use(cookieParser());
 
 app.get("/", (req, res) => {
   res.json({
