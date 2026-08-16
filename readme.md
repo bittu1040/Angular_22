@@ -493,6 +493,55 @@ npm start
                     SUCCESS
 
 
+## Browser Refresh / Reload Flow
+
+```text
+                  PAGE REFRESH / APP RELOAD
+                            │
+                            ▼
+                 Angular app boots again
+                            │
+                            ▼
+          Check localStorage / memory for accessToken
+                            │
+              ┌─────────────┴─────────────┐
+              ▼                           ▼
+       Access token exists?          No access token
+          │                               │
+          ▼                               ▼
+     Is it expired?                 Check refresh cookie
+          │                               │
+     ┌────┴─────┐                     │
+     │    YES   │                     ▼
+     ▼          │           refresh cookie exists?
+   Refresh API │                     │
+   withCredentials: true            │
+      │         │             ┌───────┴─────────────┐
+      ▼         │             ▼                     ▼
+ Browser sends cookie          NO                  YES
+      │                       │                     │
+      ▼                       ▼                     ▼
+ Backend validates        Redirect to /login       POST /api/auth/refresh-token
+ refreshToken                 │                   withCredentials: true
+      │                       │                     │
+      ▼                       │                     ▼
+ New accessToken              │              Browser sends refresh cookie
+      │                       │                     │
+      ▼                       │                     ▼
+ Angular stores it            │              Backend validates refreshToken
+      │                       │                     │
+      ▼                       │                     ▼
+ Continue app session         │              New accessToken
+                              │                     │
+                              │                     ▼
+                              │               Angular stores new token
+                              │                     │
+                              │                     ▼
+                              │              Resume app session
+                              │
+                              └────────────────────────────┘
+
+
                          LOGOUT
                             │
                             ▼
