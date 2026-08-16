@@ -1,140 +1,516 @@
 # Angular + Express + MongoDB App
 
-## Quick Start
+## Overview
 
-1. Run Docker Compose:
+This project has:
 
-   docker compose up -d
+- Frontend: Angular app served at http://localhost:4200
+- Backend: Express API at http://localhost:3000
+- Database: MongoDB
 
-2. Open the app in your browser:
+## Authentication flow
 
-   http://localhost:4200
+The backend uses JWT-based authentication with two tokens:
 
-## Backend API
+- Access token: short-lived JWT returned in the API response body
+- Refresh token: long-lived JWT stored in an HTTP-only cookie named refreshToken
 
-### Authentication
+How it works:
 
-- POST /api/auth/register - register a new user
+1. Register or login to get an access token.
+2. Send the access token in the Authorization header on protected routes.
+3. When the access token expires, call the refresh endpoint with the refresh cookie attached.
+4. The backend returns a new access token and rotates the refresh token.
 
-  Request body:
-  ```json
-  {
+Example header:
+
+```http
+Authorization: Bearer <access_token>
+```
+
+Example cookie:
+
+```http
+refreshToken=<refresh_token>; HttpOnly; Secure; SameSite=Strict
+```
+
+---
+
+## Auth API
+
+### 1) Register user
+
+Endpoint:
+
+```http
+POST /api/auth/register
+```
+
+Request payload:
+
+```json
+{
+  "name": "Jane Doe",
+  "email": "jane@example.com",
+  "password": "secret123"
+}
+```
+
+Successful response:
+
+```json
+{
+  "success": true,
+  "message": "Registration successful",
+  "data": {
+    "accessToken": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...",
+    "user": {
+      "id": "64fd9d3a7d3f1f2a4c8d1234",
+      "name": "Jane Doe",
+      "email": "jane@example.com",
+      "role": "user",
+      "status": "active",
+      "createdAt": "2026-08-16T12:00:00.000Z"
+    }
+  }
+}
+```
+
+Notes:
+
+- Password must be at least 6 characters.
+- The client receives an access token in `data.accessToken`.
+- A refresh token is also stored in the `refreshToken` cookie.
+
+### 2) Login user
+
+Endpoint:
+
+```http
+POST /api/auth/login
+```
+
+Request payload:
+
+```json
+{
+  "email": "jane@example.com",
+  "password": "secret123"
+}
+```
+
+Successful response:
+
+```json
+{
+  "success": true,
+  "message": "Login successful",
+  "data": {
+    "accessToken": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...",
+    "user": {
+      "id": "64fd9d3a7d3f1f2a4c8d1234",
+      "name": "Jane Doe",
+      "email": "jane@example.com",
+      "role": "user",
+      "status": "active"
+    }
+  }
+}
+```
+
+Notes:
+
+- This returns a fresh access token for the authenticated user.
+- The refresh token is set as the `refreshToken` HTTP-only cookie.
+
+### 3) Refresh access token
+
+Endpoint:
+
+```http
+POST /api/auth/refresh-token
+```
+
+Request:
+
+- No JSON body required
+- Send the refresh token cookie automatically from the browser
+
+Successful response:
+
+```json
+{
+  "success": true,
+  "message": "Token refreshed",
+  "data": {
+    "accessToken": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...new-token..."
+  }
+}
+```
+
+Notes:
+
+- The server verifies the refresh token from the cookie.
+- It rotates the refresh token and sends a new access token.
+
+### 4) Get current user
+
+Endpoint:
+
+```http
+GET /api/auth/me
+```
+
+Headers:
+
+```http
+Authorization: Bearer <access_token>
+```
+
+Successful response:
+
+```json
+{
+  "success": true,
+  "data": {
+    "_id": "64fd9d3a7d3f1f2a4c8d1234",
     "name": "Jane Doe",
     "email": "jane@example.com",
-    "password": "secret123"
+    "role": "user",
+    "status": "active",
+    "createdAt": "2026-08-16T12:00:00.000Z",
+    "updatedAt": "2026-08-16T12:00:00.000Z"
   }
-  ```
+}
+```
 
-- POST /api/auth/login - sign in and receive a JWT
+### 5) Logout user
 
-  Request body:
-  ```json
-  {
-    "email": "jane@example.com",
-    "password": "secret123"
+Endpoint:
+
+```http
+POST /api/auth/logout
+```
+
+Request:
+
+- No JSON body required
+- The cookie is read from the request automatically
+
+Successful response:
+
+```json
+{
+  "success": true,
+  "message": "Logout successful"
+}
+```
+
+Notes:
+
+- The backend clears the refresh token cookie.
+- It also removes the stored refresh token from the user record.
+
+---
+
+## Task API
+
+All task routes are protected and require the access token in the Authorization header.
+
+### Create task
+
+Endpoint:
+
+```http
+POST /api/tasks/createTask
+```
+
+Headers:
+
+```http
+Authorization: Bearer <access_token>
+```
+
+Request payload:
+
+```json
+{
+  "title": "Finish Angular dashboard",
+  "description": "Complete the login screen and task list UI"
+}
+```
+
+Successful response:
+
+```json
+{
+  "success": true,
+  "message": "Task created successfully",
+  "data": {
+    "_id": "64fd9d3a7d3f1f2a4c8d9999",
+    "title": "Finish Angular dashboard",
+    "description": "Complete the login screen and task list UI",
+    "status": "pending",
+    "user": "64fd9d3a7d3f1f2a4c8d1234",
+    "createdAt": "2026-08-16T12:05:00.000Z",
+    "updatedAt": "2026-08-16T12:05:00.000Z"
   }
-  ```
+}
+```
 
-- GET /api/auth/me - get the current user
+### Get all tasks for logged-in user
 
-  Headers:
-  ```http
-  Authorization: Bearer <token>
-  ```
+Endpoint:
 
-### User Management
+```http
+GET /api/tasks/myTasks
+```
 
-- POST /api/users - create a user
+Headers:
 
-  Request body:
-  ```json
-  {
-    "name": "John Smith",
-    "email": "john@example.com",
-    "password": "secret123"
+```http
+Authorization: Bearer <access_token>
+```
+
+Successful response:
+
+```json
+{
+  "success": true,
+  "data": [
+    {
+      "_id": "64fd9d3a7d3f1f2a4c8d9999",
+      "title": "Finish Angular dashboard",
+      "description": "Complete the login screen and task list UI",
+      "status": "pending",
+      "user": "64fd9d3a7d3f1f2a4c8d1234",
+      "createdAt": "2026-08-16T12:05:00.000Z",
+      "updatedAt": "2026-08-16T12:05:00.000Z"
+    }
+  ]
+}
+```
+
+### Get task by ID
+
+Endpoint:
+
+```http
+GET /api/tasks/tasks/:id
+```
+
+Headers:
+
+```http
+Authorization: Bearer <access_token>
+```
+
+Successful response:
+
+```json
+{
+  "success": true,
+  "data": {
+    "_id": "64fd9d3a7d3f1f2a4c8d9999",
+    "title": "Finish Angular dashboard",
+    "description": "Complete the login screen and task list UI",
+    "status": "pending",
+    "user": "64fd9d3a7d3f1f2a4c8d1234",
+    "createdAt": "2026-08-16T12:05:00.000Z",
+    "updatedAt": "2026-08-16T12:05:00.000Z"
   }
-  ```
+}
+```
 
-- GET /api/users - list users
+### Update task
 
-  Optional query parameters:
-  ```text
-  ?page=1&limit=10&search=john&role=user&status=active&sortBy=createdAt&sortOrder=desc
-  ```
+Endpoint:
 
-- GET /api/users/:id - get a user by ID
+```http
+PUT /api/tasks/tasks/:id
+```
 
-  No body required.
+Headers:
 
-- PUT /api/users/:id - update a user by ID
+```http
+Authorization: Bearer <access_token>
+```
 
-  Request body:
-  ```json
-  {
-    "name": "John Updated",
-    "email": "john.updated@example.com"
+Request payload:
+
+```json
+{
+  "title": "Finish Angular dashboard v2",
+  "description": "Complete the login screen and task list UI and fix bugs",
+  "status": "completed"
+}
+```
+
+Successful response:
+
+```json
+{
+  "success": true,
+  "message": "Task updated successfully",
+  "data": {
+    "_id": "64fd9d3a7d3f1f2a4c8d9999",
+    "title": "Finish Angular dashboard v2",
+    "description": "Complete the login screen and task list UI and fix bugs",
+    "status": "completed",
+    "user": "64fd9d3a7d3f1f2a4c8d1234",
+    "createdAt": "2026-08-16T12:05:00.000Z",
+    "updatedAt": "2026-08-16T12:20:00.000Z"
   }
-  ```
+}
+```
 
-- DELETE /api/users/:id - delete a user by ID
+### Delete task
 
-  No body required.
+Endpoint:
 
-- GET /api/users/download - download user data
+```http
+DELETE /api/tasks/tasks/:id
+```
 
-  Optional query parameters:
-  ```text
-  ?search=john&role=user&status=active
-  ```
+Headers:
 
-## Architecture
+```http
+Authorization: Bearer <access_token>
+```
 
-- frontend: Angular app served by Nginx
-- backend: Express API on port 3000
-- database: MongoDB on port 27017
+Successful response:
 
-## Simple
+```json
+{
+  "success": true,
+  "message": "Task deleted successfully"
+}
+```
 
-auth APIs:
+---
 
-POST /api/auth/register    Public
-POST /api/auth/login       Public
-GET  /api/auth/me          JWT required
+## Project run
 
-And tasks APIs:
+### Docker
 
-POST   /api/tasks
-GET    /api/tasks
-GET    /api/tasks/:id
-PUT    /api/tasks/:id
-DELETE /api/tasks/:id
+```bash
+docker compose up -d
+```
 
-Browser -> `http://localhost:4200`
+Open:
 
-Frontend
-  ├─ serves Angular UI
-  └─ sends `/api/*` requests to backend
+```text
+http://localhost:4200
+```
 
-Backend
-  ├─ handles `/api/auth/*` and `/api/users/*`
-  └─ talks to MongoDB
+### Local backend
 
-MongoDB
-  └─ stores user data
+```bash
+cd backend
+npm install
+npm start
+```
+
+### Local frontend
+
+```bash
+cd frontend
+npm install
+npm start
+```
 
 ## Notes
 
-- Authentication uses JWT tokens.
-- User data is stored in MongoDB.
+- Registration and login return an access token.
+- The backend stores the refresh token in a secure HTTP-only cookie.
+- Protected routes require Authorization: Bearer <access_token>.
+- Task routes are route-protected and tied to the authenticated user. 
 
-## Run without Docker
 
-From `backend`:
 
-   npm install
-   npm start
 
-From `frontend`:
+                         REGISTER
+                            │
+                            ▼
+                    Create User in MongoDB
+                            │
+                            ▼
+                       LOGIN
+                            │
+              ┌─────────────┴─────────────┐
+              ▼                           ▼
+        ACCESS TOKEN                REFRESH TOKEN
+              │                           │
+              ▼                           ▼
+    Angular memory/localStorage     HTTP-only Cookie
+              │                           │
+              │                           ▼
+              │                      MongoDB
+              │                 user.refreshToken
+              │
+              ▼
+       CREATE / UPDATE TASK
+              │
+              │ Authorization:
+              │ Bearer <accessToken>
+              ▼
+        Auth Middleware
+              │
+              ▼
+       Access Token Valid?
+          │           │
+         YES          NO
+          │           │
+          ▼           ▼
+     Task API       401
+                      │
+                      ▼
+             POST /auth/refresh-token
+             withCredentials: true
+                      │
+                      ▼
+             Browser sends cookie
+                      │
+                      ▼
+             Backend validates
+             refreshToken
+                      │
+                      ▼
+             New accessToken
+                      │
+                      ▼
+             Angular replaces
+             old accessToken
+                      │
+                      ▼
+              Retry original API
+                      │
+                      ▼
+                    SUCCESS
 
-   npm install
-   npm start
+
+                         LOGOUT
+                            │
+                            ▼
+                POST /api/auth/logout
+                 withCredentials: true
+                            │
+                            ▼
+                 Browser sends refresh
+                      token cookie
+                            │
+              ┌─────────────┴─────────────┐
+              ▼                           ▼
+      MongoDB:                       Browser:
+      refreshToken = null            clear cookie
+              │                           │
+              └─────────────┬─────────────┘
+                            ▼
+                 Angular removes
+                   accessToken
+                            │
+                            ▼
+                  Redirect to /login
+                            │
+                            ▼
+                       LOGGED OUT

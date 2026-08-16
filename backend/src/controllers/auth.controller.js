@@ -22,7 +22,7 @@ const generateRefreshToken = (user) => {
     {
       userId: user._id.toString(),
     },
-    process.env.REFRESH_TOKEN_SECRET,
+    process.env.JWT_SECRET,
     {
       expiresIn: process.env.REFRESH_TOKEN_EXPIRES_IN || "7d",
     }
@@ -219,7 +219,7 @@ const refreshToken = async (req, res) => {
     // Verify refresh token
     const decoded = jwt.verify(
       token,
-      process.env.REFRESH_TOKEN_SECRET
+      process.env.JWT_SECRET
     );
 
     // Find user
