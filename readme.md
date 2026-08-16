@@ -428,14 +428,18 @@ npm start
 
 
 
+# Authentication Flow
 
+## JWT Authentication Flow
+
+```text
                          REGISTER
                             │
                             ▼
                     Create User in MongoDB
                             │
                             ▼
-                       LOGIN
+                         LOGIN
                             │
               ┌─────────────┴─────────────┐
               ▼                           ▼
@@ -514,3 +518,61 @@ npm start
                             │
                             ▼
                        LOGGED OUT
+```
+
+## Token Storage
+
+| Token                  | Stored Where                    | Used For                            |
+| ---------------------- | ------------------------------- | ----------------------------------- |
+| **Access Token**       | Angular memory / `localStorage` | Access protected APIs               |
+| **Refresh Token**      | HTTP-only browser cookie        | Get a new access token              |
+| **Refresh Token Copy** | MongoDB `user.refreshToken`     | Validate/invalidate refresh session |
+
+## Request Flow
+
+### Protected API
+
+```http
+Authorization: Bearer <accessToken>
+```
+
+Used for:
+
+* Create Task
+* Update Task
+* Delete Task
+* Get Tasks
+* Other protected APIs
+
+### Refresh API
+
+```http
+POST /api/auth/refresh-token
+```
+
+The frontend sends the request with:
+
+```typescript
+withCredentials: true
+```
+
+The browser automatically sends the HTTP-only:
+
+```http
+Cookie: refreshToken=<refreshToken>
+```
+
+The backend validates the refresh token and returns a new access token.
+
+### Logout
+
+```http
+POST /api/auth/logout
+```
+
+The backend:
+
+1. Invalidates `user.refreshToken` in MongoDB.
+2. Clears the `refreshToken` HTTP-only cookie.
+3. Frontend removes the `accessToken`.
+4. Frontend redirects the user to `/login`.
