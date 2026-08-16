@@ -34,7 +34,12 @@ const userSchema = new mongoose.Schema(
       type: String,
       enum: ["active", "inactive"],
       default: "active"
-    }
+    },
+
+    refreshToken: {
+      type: String,
+      default: null
+    },
   },
   {
     timestamps: true
