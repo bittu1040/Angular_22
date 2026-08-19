@@ -1,8 +1,8 @@
-import { inject, Injectable, signal, effect } from '@angular/core';
+import { inject, Injectable, signal } from '@angular/core';
 import { HttpClient } from '@angular/common/http';
 import { environment } from '../../environments/environment';
 import { User, RegisterRequest, LoginRequest, AuthResponse, CurrentUserResponse } from '../models/user.model';
-import { tap } from 'rxjs';
+import { EMPTY, catchError, switchMap, tap } from 'rxjs';
 
 @Injectable({
   providedIn: 'root'
@@ -15,33 +15,10 @@ export class AuthService {
   currentUser = signal<User | null>(null);
 
   // Signal for access token
-  accessToken = signal<string | null>(this.getTokenFromStorage());
+  accessToken = signal<string | null>(null);
 
   // Signal for loading state
   isLoading = signal(false);
-
-  constructor() {
-    // Persist token to localStorage whenever it changes
-    effect(() => {
-      const token = this.accessToken();
-      if (token) {
-        localStorage.setItem('auth_token', token);
-        console.log('[AuthService] Token saved to localStorage');
-      } else {
-        localStorage.removeItem('auth_token');
-        console.log('[AuthService] Token removed from localStorage');
-      }
-    });
-  }
-
-  private getTokenFromStorage(): string | null {
-    if (typeof window === 'undefined') return null;
-    const token = localStorage.getItem('auth_token');
-    if (token) {
-      console.log('[AuthService] Token restored from localStorage');
-    }
-    return token;
-  }
 
   register(data: RegisterRequest) {
     this.isLoading.set(true);
@@ -92,6 +69,16 @@ export class AuthService {
           console.log('[AuthService] Token refreshed successfully');
           this.accessToken.set(response.data.accessToken);
         }
+      })
+    );
+  }
+
+  restoreSession() {
+    return this.refreshToken().pipe(
+      switchMap(() => this.getCurrentUser()),
+      catchError(() => {
+        this.clearAuth();
+        return EMPTY;
       })
     );
   }

@@ -15,8 +15,8 @@ export const authInterceptor: HttpInterceptorFn = (req, next) => {
 
   const token = authService.getAccessToken();
 
-  // Add access token to the request
-  let authReq = req;
+  // Keep the refresh token in its HTTP-only cookie.
+  let authReq = req.clone({ withCredentials: true });
 
   if (token && !isAuthRequest) {
     authReq = req.clone({
