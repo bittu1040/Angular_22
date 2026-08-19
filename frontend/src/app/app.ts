@@ -13,6 +13,12 @@ export class App {
   protected authService = inject(AuthService);
   private router = inject(Router);
 
+  constructor() {
+    if(this.authService.isAuthenticated()) {
+      this.authService.getCurrentUser().subscribe()
+    }
+  }
+
   onLogout() {
     this.authService.logout().subscribe(() => {
       this.router.navigate(['/login']);
