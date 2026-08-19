@@ -12,13 +12,6 @@ import { CreateTaskRequest, UpdateTaskRequest, Task } from '../../models/task.mo
   imports: [CommonModule, FormsModule],
   templateUrl: './task-form.component.html',
   styleUrls: ['./task-form.component.scss'],
-
-  styles: [`
-    .card {
-      border: none;
-      border-radius: 8px;
-    }
-  `]
 })
 export class TaskFormComponent implements OnInit {
   protected taskService = inject(TaskService);
