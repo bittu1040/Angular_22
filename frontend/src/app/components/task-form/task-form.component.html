@@ -11,22 +11,27 @@
                         {{ errorMessage() }}
                     </div>
 
-                    <form (ngSubmit)="onSubmit()">
+                    <form [formGroup]="taskForm" (ngSubmit)="onSubmit()">
                         <div class="mb-3">
                             <label for="title" class="form-label">Title *</label>
-                            <input type="text" class="form-control" id="title" [(ngModel)]="formData.title" name="title"
-                                required placeholder="Enter task title" />
+                            <input type="text" class="form-control" id="title" formControlName="title"
+                                [class.is-invalid]="taskForm.controls.title.invalid && taskForm.controls.title.touched"
+                                placeholder="Enter task title" />
+                            <div *ngIf="taskForm.controls.title.invalid && taskForm.controls.title.touched"
+                                class="invalid-feedback">
+                                Title is required.
+                            </div>
                         </div>
 
                         <div class="mb-3">
                             <label for="description" class="form-label">Description</label>
-                            <textarea class="form-control" id="description" [(ngModel)]="formData.description"
-                                name="description" rows="4" placeholder="Enter task description (optional)"></textarea>
+                            <textarea class="form-control" id="description" formControlName="description"
+                                rows="4" placeholder="Enter task description (optional)"></textarea>
                         </div>
 
                         <div *ngIf="isEditMode()" class="mb-3">
                             <label for="status" class="form-label">Status</label>
-                            <select class="form-select" id="status" [(ngModel)]="formData.status" name="status">
+                            <select class="form-select" id="status" formControlName="status">
                                 <option value="pending">Pending</option>
                                 <option value="completed">Completed</option>
                             </select>

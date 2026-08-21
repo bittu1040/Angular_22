@@ -15,6 +15,7 @@ import { Task } from '../../models/task.model';
 export class TaskListComponent implements OnInit {
   protected taskService = inject(TaskService);
   private router = inject(Router);
+  updatingTaskId = signal<string | null>(null);
 
   taskList = computed(() => this.taskService.tasks());
 
@@ -41,6 +42,24 @@ export class TaskListComponent implements OnInit {
 
   goToEdit(taskId: string) {
     this.router.navigate(['/tasks/edit', taskId]);
+  }
+
+  updateStatus(task: Task, status: Task['status']) {
+    if (status === task.status) {
+      return;
+    }
+
+    this.updatingTaskId.set(task._id);
+    this.taskService.updateTask(task._id, { status }).subscribe({
+      next: () => {
+        task.status = status;
+        this.updatingTaskId.set(null);
+      },
+      error: (error) => {
+        console.error('Failed to update task status:', error);
+        this.updatingTaskId.set(null);
+      },
+    });
   }
 
   deleteTask(taskId: string) {

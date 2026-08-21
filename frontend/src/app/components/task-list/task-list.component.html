@@ -33,10 +33,20 @@
                             </p>
                         </div>
                         <div>
-                            <span class="badge"
-                                [ngClass]="task.status === 'completed' ? 'bg-success' : 'bg-warning text-dark'">
-                                {{ task.status }}
-                            </span>
+                            <label class="visually-hidden" [for]="'status-' + task._id">
+                                Update status for {{ task.title }}
+                            </label>
+                            <select
+                                class="form-select form-select-sm"
+                                [id]="'status-' + task._id"
+                                [ngModel]="task.status"
+                                (ngModelChange)="updateStatus(task, $event)"
+                                [disabled]="updatingTaskId() === task._id"
+                                [class.border-success]="task.status === 'completed'"
+                                [class.border-warning]="task.status === 'pending'">
+                                <option value="pending">Pending</option>
+                                <option value="completed">Completed</option>
+                            </select>
                         </div>
                     </div>
                     <div class="mt-3">

@@ -1,6 +1,6 @@
 import { Component, inject, signal, OnInit } from '@angular/core';
 import { CommonModule } from '@angular/common';
-import { FormsModule } from '@angular/forms';
+ import { NonNullableFormBuilder, ReactiveFormsModule, Validators } from '@angular/forms';
 
 import { Router, ActivatedRoute } from '@angular/router';
 import { TaskService } from '../../services/task.service';
@@ -9,20 +9,21 @@ import { CreateTaskRequest, UpdateTaskRequest, Task } from '../../models/task.mo
 @Component({
   selector: 'app-task-form',
   standalone: true,
-  imports: [CommonModule, FormsModule],
+  imports: [CommonModule, ReactiveFormsModule],
   templateUrl: './task-form.component.html',
   styleUrls: ['./task-form.component.scss'],
 })
 export class TaskFormComponent implements OnInit {
   protected taskService = inject(TaskService);
+  private formBuilder = inject(NonNullableFormBuilder);
   private router = inject(Router);
   private activatedRoute = inject(ActivatedRoute);
 
-  formData: CreateTaskRequest & UpdateTaskRequest = {
-    title: '',
-    description: '',
-    status: 'pending'
-  };
+  taskForm = this.formBuilder.group({
+    title: ['', Validators.required],
+    description: [''],
+    status: this.formBuilder.control<'pending' | 'completed'>('pending'),
+  });
 
   errorMessage = signal<string | null>(null);
   isEditMode = signal(false);
@@ -42,11 +43,11 @@ export class TaskFormComponent implements OnInit {
       next: (response) => {
         if (response.success && !Array.isArray(response.data)) {
           const task = response.data as Task;
-          this.formData = {
+          this.taskForm.patchValue({
             title: task.title,
             description: task.description,
-            status: task.status
-          };
+            status: task.status,
+          });
         }
       },
       error: (error) => {
@@ -56,15 +57,19 @@ export class TaskFormComponent implements OnInit {
   }
 
   onSubmit() {
-    if (!this.formData.title?.trim()) {
+    this.taskForm.markAllAsTouched();
+
+    if (this.taskForm.invalid) {
       this.errorMessage.set('Title is required');
       return;
     }
 
     this.errorMessage.set(null);
+    const formData = this.taskForm.getRawValue();
 
     if (this.isEditMode() && this.currentTaskId()) {
-      this.taskService.updateTask(this.currentTaskId()!, this.formData).subscribe({
+      const updateData: UpdateTaskRequest = formData;
+      this.taskService.updateTask(this.currentTaskId()!, updateData).subscribe({
         next: (response) => {
           if (response.success) {
             this.router.navigate(['/tasks']);
@@ -75,7 +80,11 @@ export class TaskFormComponent implements OnInit {
         }
       });
     } else {
-      this.taskService.createTask(this.formData).subscribe({
+      const createData: CreateTaskRequest = {
+        title: formData.title.trim(),
+        description: formData.description.trim(),
+      };
+      this.taskService.createTask(createData).subscribe({
         next: (response) => {
           if (response.success) {
             this.router.navigate(['/tasks']);
